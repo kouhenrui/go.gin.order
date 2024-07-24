@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package oauth;
+option go_package = "/";
+service OauthService {
+  rpc OAuth(Req) returns(Res){}
+}
+message Req{
+    string logMethod=1;
+}
+message Res{
+  bool message=1;
+}
+
+

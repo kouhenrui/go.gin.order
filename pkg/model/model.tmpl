@@ -1,0 +1,32 @@
+// model.tmpl
+package models
+
+import "gorm.io/gorm"
+
+type {{.ModelName}} struct {
+gorm.Model
+}
+
+// Create{{.ModelName}} creates a new {{.ModelName}}
+func Create{{.ModelName}}(name string) (*{{.ModelName}}, error) {
+	// TODO: implement create logic
+	return &{{.ModelName}}{Name: name, CreatedAt: time.Now(), UpdatedAt: time.Now()}, nil
+}
+
+// Get{{.ModelName}} retrieves a {{.ModelName}} by ID
+func Get{{.ModelName}}(id int) (*{{.ModelName}}, error) {
+	// TODO: implement get logic
+	return &{{.ModelName}}{ID: id, Name: "Example", CreatedAt: time.Now(), UpdatedAt: time.Now()}, nil
+}
+
+// Update{{.ModelName}} updates an existing {{.ModelName}}
+func Update{{.ModelName}}(id int, name string) (*{{.ModelName}}, error) {
+	// TODO: implement update logic
+	return &{{.ModelName}}{ID: id, Name: name, CreatedAt: time.Now(), UpdatedAt: time.Now()}, nil
+}
+
+// Delete{{.ModelName}} deletes a {{.ModelName}} by ID
+func Delete{{.ModelName}}(id int) error {
+	// TODO: implement delete logic
+	return nil
+}

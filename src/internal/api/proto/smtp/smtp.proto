@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package smtp;
+option go_package = "/";
+service SmtpService {
+  rpc SMTP(SMTPReq) returns(SMTPRes){}
+}
+message SMTPReq{
+  string email=1;
+}
+message SMTPRes{
+  string message=1;
+}
