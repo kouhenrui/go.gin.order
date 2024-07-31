@@ -1,6 +1,10 @@
 package ws
 
-import "fmt"
+import (
+	"fmt"
+	"go.gin.order/src/config/messagequeue"
+	"log"
+)
 
 type Hub struct {
 	clients    map[*wsClient]bool
@@ -31,6 +35,7 @@ func (h *Hub) Run() {
 		case client := <-h.register:
 			fmt.Println("注册聊天")
 			h.clients[client] = true
+			go NewConsumerHub(h)
 		case client := <-h.unregister:
 			fmt.Println("退出聊天")
 			if _, ok := h.clients[client]; ok {
@@ -44,8 +49,9 @@ func (h *Hub) Run() {
 				}
 			}
 		case message := <-h.broadcast:
-			fmt.Println("公共消息")
+			fmt.Println("公共消息1")
 			if roomClients, ok := h.rooms[message.Room]; ok {
+				fmt.Println("公共消息2")
 				for client := range roomClients {
 					select {
 					case client.send <- []byte(message.Content):
@@ -57,6 +63,7 @@ func (h *Hub) Run() {
 					}
 				}
 			} else {
+				fmt.Println("公共消息3")
 				for client := range h.clients {
 					client.send <- []byte(message.Content)
 				}
@@ -90,4 +97,31 @@ func (h *Hub) Run() {
 
 		}
 	}
+}
+func NewConsumerHub(hub *Hub) {
+	go func() {
+		msgs, err := messagequeue.RabbitChannel.Consume(
+			"approval", // queue
+			"",         // consumer
+			true,       // auto-ack
+			false,      // exclusive
+			false,      // no-local
+			false,      // no-wait
+			nil,        // args
+		)
+		if err != nil {
+			log.Fatalf("Failed to register a consumer: %v", err)
+		}
+
+		for msg := range msgs {
+			log.Printf("Received a message: %s", msg.Body)
+			hub.broadcast <- Message{
+				Content: string(msg.Body),
+				Type:    "msg",
+				Target:  "",
+				Room:    "",
+				Id:      "",
+			}
+		}
+	}()
 }

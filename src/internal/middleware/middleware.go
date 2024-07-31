@@ -84,7 +84,7 @@ func TokenMiddleware() gin.HandlerFunc {
 func VerifyCookie() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestUrl := c.Request.URL.String()
-		//log.Println(requestUrl, "请求路径")
+		log.Println(requestUrl, "请求路径")
 		if !util.FuzzyMatch(requestUrl, config.WhiteUrl) {
 			log.Println("cookie验证")
 			cookie, err := c.Cookie("name")

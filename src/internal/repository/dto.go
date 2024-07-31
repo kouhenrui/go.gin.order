@@ -85,3 +85,9 @@ type RoleRes struct {
 	Status      int
 	Description string
 }
+type ApproversByApprovalID struct {
+	ApproverID uint
+	Order      int
+	Name       string
+	Status     string
+}

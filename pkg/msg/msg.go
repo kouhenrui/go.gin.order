@@ -20,4 +20,6 @@ const (
 	CAPTCHAERROR         = "验证码请求频繁，请稍后再试"
 
 	CASBINFOUNDERROR = "权限未找到"
+
+	APPROVALORDERERROR = "工单审核顺序错误，无法操作"
 )

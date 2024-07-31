@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"go.gin.order/src/config/messagequeue"
 	"log"
 	"net/http"
 	"time"
@@ -75,6 +76,7 @@ func WsInit(huber *Hub, w http.ResponseWriter, r *http.Request) {
 	connect.hub.register <- connect
 	go connect.readPump()
 	go connect.writePump()
+	//go connect.readrabbitmq()
 	//go connect.handleConnect()
 }
 
@@ -141,4 +143,34 @@ func (w *wsClient) writePump() {
 			}
 		}
 	}
+}
+func (w *wsClient) readrabbitmq() {
+	log.Println(messagequeue.RabbitChannel, "channel")
+	consumer, err := messagequeue.NewConsumer("approval")
+	if err != nil {
+		log.Println("Failed to create consumer:", err)
+		w.hub.broadcast <- Message{Type: "Warning", Content: w.data.id, Room: w.data.room}
+		return
+	}
+	defer consumer.Close()
+
+	log.Println("Connected to RabbitMQ, waiting for messages...")
+	w.hub.broadcast <- Message{Type: "Warning", Content: "watch id"}
+
+	go func() {
+		err := consumer.Consume(func(msg string) {
+			log.Println("Received message from RabbitMQ:", msg)
+			w.hub.broadcast <- Message{
+				Type:    "message",
+				Target:  "",
+				Room:    "",
+				Id:      "",
+				Content: msg,
+			}
+		})
+		if err != nil {
+			log.Println("Failed to consume messages:", err)
+			w.hub.broadcast <- Message{Type: "Warning", Content: err.Error()}
+		}
+	}()
 }

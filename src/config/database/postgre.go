@@ -44,8 +44,12 @@ var (
 	catit pojo.CartItem
 	ord   pojo.Order
 	ordit pojo.OrderItem
+
+	apl pojo.Approval
+	apr pojo.Approver
+	apn pojo.ApprovalAction
 )
 
 func InitPostgresql() {
-	PostgreClient.AutoMigrate(&car, &ord, &catit, &ordit)
+	PostgreClient.AutoMigrate(&car, &ord, &catit, &ordit, &apl, &apr, &apn)
 }

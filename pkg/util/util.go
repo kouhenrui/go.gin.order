@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-playground/validator/v10"
+	"log"
 	"reflect"
 	"regexp"
 )
@@ -26,29 +27,33 @@ func ValidateExist(a string, b []string) bool {
 
 /**
  * @Author Khr
- * @Description //反射获取请求字段错误原因
+ * @Description 通过反射获取结构体字段的标签处理验证错误并
  * @Date 14:55 2024/5/15
  * @Param
  * @return
  **/
 func GetValidate(err error, obj any) error {
-
-	invalid, ok := err.(*validator.InvalidValidationError)
+	log.Println(err, "++++++++++++++")
+	var invalid *validator.InvalidValidationError
+	ok := errors.As(err, &invalid)
 	if ok {
 		fmt.Println("param error:", invalid)
 		return invalid
 	}
 	//反射获取标签的注释
 	getObj := reflect.TypeOf(obj)
-	if errs, ok := err.(validator.ValidationErrors); ok {
+	var errs validator.ValidationErrors
+	if errors.As(err, &errs) {
 		//return errs
 		for _, e := range errs {
 			if f, exist := getObj.Elem().FieldByName(e.Field()); exist {
 				msg := f.Tag.Get("msg")
+				log.Println(msg, "msg********")
 				return errors.New(msg)
 			}
 		}
 	}
+	log.Println(err, "********err")
 	return err
 }
 

@@ -6,7 +6,6 @@ import (
 	"go.gin.order/src/config/ws"
 	"go.gin.order/src/internal/middleware"
 	"log"
-	"net/http"
 )
 
 func InitHttp() {
@@ -27,9 +26,12 @@ func InitHttp() {
 	//fmt.Println("中间加载结束", config.Port)
 	hub := ws.NewHub()
 	go hub.Run()
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ws.WsInit(hub, w, r)
+	//ws.NewConsumerHub(hub)
+	r.GET("/ws", func(c *gin.Context) {
+		ws.WsInit(hub, c.Writer, c.Request)
 	})
+	//http.ListenAndServe(":9999", nil)
+	log.Println("ws server on 9999")
 	//err := r.RunTLS(config.Port, "../../config/https/certificate.crt", "../../config/https/private.key")
 	err := r.Run(config.Port)
 	//logger.Println(su)
