@@ -158,9 +158,15 @@ func (w *wsClient) writePump() {
 		case message, ok := <-w.send:
 			//w.ws.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				w.ws.WriteMessage(websocket.CloseMessage, []byte{})
+				err := w.ws.WriteMessage(websocket.CloseMessage, []byte{})
+				if err != nil {
+					return
+				}
 			}
-			w.ws.WriteMessage(websocket.TextMessage, message)
+			err := w.ws.WriteMessage(websocket.TextMessage, message)
+			if err != nil {
+				return
+			}
 			//wss, err := w.ws.NextWriter(websocket.TextMessage)
 			//if err != nil {
 			//	return
