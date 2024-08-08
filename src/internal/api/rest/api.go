@@ -2,11 +2,10 @@ package rest
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/go-pay/util"
 	"go.gin.order/src/config/messagequeue"
 	"go.gin.order/src/internal/controller"
 	"go.gin.order/src/internal/middleware"
-	"log"
+	"net/http"
 )
 
 func initApi(r *gin.Engine) {
@@ -16,31 +15,29 @@ func initApi(r *gin.Engine) {
 		publiccontroller := controller.NewPublicController()
 		api.GET("/public/captcha", publiccontroller.Captcha, middleware.LimitCaptcha())
 		api.POST("/public/upload", publiccontroller.File)
-		api.GET("/public/test", func(c *gin.Context) {
-			message := util.RandomString(8)
-			pro, err := messagequeue.NewProducer("approval")
+		api.POST("/public/test", func(c *gin.Context) {
+			body := c.PostForm("message")
+			types := c.PostForm("type")
+			//log.Println(body)
+			mq, _ := messagequeue.NewRabbitMQ()
+			var exchangname string
+			switch types {
+			case "direct":
+				exchangname = "direct_exchange"
+			case "broadcast":
+				exchangname = "fanout_exchange"
+			case "topic":
+				exchangname = "topic_exchange"
+			default:
+				break
+			}
+			err := mq.Publish(exchangname, "", []byte(body))
 			if err != nil {
-				c.Error(err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
-			log.Println(pro)
-			err = pro.Publish(message)
-			if err != nil {
-				c.Error(err)
-				return
-			}
-			//defer pro.Close()
-			//defer pro.Close()
-			//var l = make(chan string)
-			//con, _ := messagequeue.NewConsumer("approval")
-			//defer con.Close()
-			//go con.Consume(func(message string) {
-			//	l <- message
-			//})
-			//for i := range l {
-			//	log.Println(i, "发送的信息，接收到是")
-			//}
-			c.Set("res", message)
+
+			c.Set("res", body)
 		})
 		auth := api.Group("/auth")
 		logincontroller := controller.NewLoginController()

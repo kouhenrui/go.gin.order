@@ -3,6 +3,7 @@ package rest
 import (
 	"github.com/gin-gonic/gin"
 	"go.gin.order/src/config"
+	"go.gin.order/src/config/messagequeue"
 	"go.gin.order/src/config/ws"
 	"go.gin.order/src/internal/middleware"
 	"log"
@@ -24,11 +25,12 @@ func InitHttp() {
 	r.NoRoute(middleware.NotFoundHandler)          //404
 	r.NoMethod(middleware.MethodNotAllowedHandler) //405，方法为找到
 	//fmt.Println("中间加载结束", config.Port)
+	mq, _ := messagequeue.NewRabbitMQ()
 	hub := ws.NewHub()
-	go hub.Run()
+	go hub.Run(mq)
 	//ws.NewConsumerHub(hub)
 	r.GET("/ws", func(c *gin.Context) {
-		ws.WsInit(hub, c.Writer, c.Request)
+		ws.WsInit(hub, c.Writer, c.Request, mq)
 	})
 	//http.ListenAndServe(":9999", nil)
 	log.Println("ws server on 9999")

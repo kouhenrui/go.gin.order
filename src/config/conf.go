@@ -8,7 +8,6 @@ import (
 	"go.gin.order/src/config/casbin"
 	"go.gin.order/src/config/database"
 	"go.gin.order/src/config/logger"
-	"go.gin.order/src/config/messagequeue"
 	"go.gin.order/src/config/redis"
 	"go.gin.order/src/config/translate"
 	"go.gin.order/src/internal/pojo"
@@ -28,6 +27,7 @@ var (
 	Tcp      string
 	language string
 	JWTKey   string
+	MQURL    string
 
 	Captcha       pojo.Captcha
 	mysqlClient   pojo.MysqlConf
@@ -35,10 +35,10 @@ var (
 	redisClient   pojo.RedisConf
 	casbinClient  pojo.CabinConf //权限连接实例
 	logConf       pojo.LogCof    //连接日志实例化参数
-	mqConf        pojo.RabbitmqConf
-	mongoClient   pojo.MongoConf
-	etcdArry      = []string{}
-	WhiteUrl      = []string{"/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/public/.*", "/api/v1/approval/.*", "/api/v1/approval/.*", "/ws"}
+	//mqConf        pojo.RabbitmqConf
+	mongoClient pojo.MongoConf
+	etcdArry    = []string{}
+	WhiteUrl    = []string{"/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/public/.*", "/api/v1/approval/.*", "/api/v1/approval/.*", "/ws"}
 )
 
 const (
@@ -81,6 +81,7 @@ func viperLoadConf() {
 	Tcp = v.GetString("server.tcp")           //读取tcp请求端口号
 	language = v.GetString("server.language") //读取语言包
 	JWTKey = v.GetString("server.jwt")        //读取jwt密钥
+	MQURL = v.GetString("rabbitmq.url")       //读取rabbitmq配置
 	//JwtExpT = v.GetInt("server.jwtexp")
 	logConfig := v.GetStringMap("logger") //日志路径及名称设置
 	captchaexp := v.GetInt("captcha.expire")
@@ -91,15 +92,15 @@ func viperLoadConf() {
 	mysql := v.GetStringMap("mysql") //读取MySQL配置
 	postgresql := v.GetStringMap("postgresql")
 	rediss := v.GetStringMap("redis") //读取redis配置
-	mq := v.GetStringMap("rabbitmq")  //读取rabbitmq配置
-	cn := v.GetStringMap("casbin")    //读取casbin配置
+
+	cn := v.GetStringMap("casbin") //读取casbin配置
 	//ck := v.GetStringMap("click")    //读取click house配置
 	mg := v.GetStringMap("mongo")
 	//map转struct
 	mapstructure.Decode(mysql, &mysqlClient)
 	mapstructure.Decode(postgresql, &postgreClient)
 	mapstructure.Decode(rediss, &redisClient)
-	mapstructure.Decode(mq, &mqConf)
+	//mapstructure.Decode(mq, &mqConf)
 	mapstructure.Decode(logConfig, &logConf)
 	mapstructure.Decode(cn, &casbinClient)
 	mapstructure.Decode(mg, &mongoClient)
@@ -128,6 +129,6 @@ func viperLoadConf() {
 	casbin.CasbinInit(&casbinClient) //casbin连接
 
 	//etcd.EtcdInit(etcdConnect)
-	messagequeue.Mqinit(&mqConf)
+	//messagequeue.Mqinit(&mqConf)
 	//repository.TableInit()
 }

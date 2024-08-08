@@ -65,22 +65,25 @@ var upGrader = &websocket.Upgrader{
 	},
 }
 
-func WsInit(huber *Hub, w http.ResponseWriter, r *http.Request) {
+func WsInit(huber *Hub, w http.ResponseWriter, r *http.Request, mq *messagequeue.RabbitMQ) {
 	ws, err := upGrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("WebSocket upgrade failed:", err)
 		return
 	}
+	id := r.URL.Query().Get("id")
+	log.Println("id", id)
 	data := newData()
+	data.id = id
 	connect := &wsClient{hub: huber, ws: ws, data: *data, send: make(chan []byte, 1024)}
 	connect.hub.register <- connect
-	go connect.readPump()
+	go connect.readPump(mq)
 	go connect.writePump()
 	//go connect.readrabbitmq()
 	//go connect.handleConnect()
 }
 
-func (w *wsClient) readPump() {
+func (w *wsClient) readPump(mq *messagequeue.RabbitMQ) {
 	for {
 		_, message, err := w.ws.ReadMessage()
 		if err != nil {
@@ -116,61 +119,96 @@ func (w *wsClient) readPump() {
 			fmt.Println("Unknown message type:", msg)
 		}
 
+		if mq != nil {
+			w.hub.mqClient[w] = w.data.id
+			queue, err := mq.DeclareQueue(w.data.id)
+			if err != nil {
+				log.Printf("Failed to declare queue: %v", err)
+				return
+			}
+			err = mq.BindQueue(queue.Name, "", "direct_exchange")
+			if err != nil {
+				log.Printf("Failed to bind queue: %v", err)
+				return
+			}
+
+			msgs, err := mq.Consume(queue.Name)
+			if err != nil {
+				log.Printf("Failed to consume messages: %v", err)
+				return
+			}
+			go func() {
+				for msg := range msgs {
+					log.Printf("Received a message: %s", msg.Body)
+					w.hub.broadcast <- Message{Type: "notification", Content: string(msg.Body)}
+					//c.send <- msg.Body
+				}
+			}()
+
+		}
+
 	}
 
 }
 
 func (w *wsClient) writePump() {
-	ticker := time.NewTicker(pingPeriod)
+	//ticker := time.NewTicker(pingPeriod)
 	for {
 		select {
 		case message, ok := <-w.send:
-			w.ws.SetWriteDeadline(time.Now().Add(writeWait))
+			//w.ws.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				w.ws.WriteMessage(websocket.CloseMessage, []byte{})
-
-				return
 			}
-			wss, err := w.ws.NextWriter(websocket.TextMessage)
-			if err != nil {
-				return
-			}
-			wss.Write(message)
-		case <-ticker.C:
-			w.ws.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := w.ws.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return
-			}
+			w.ws.WriteMessage(websocket.TextMessage, message)
+			//wss, err := w.ws.NextWriter(websocket.TextMessage)
+			//if err != nil {
+			//	return
+			//}
+			//wss.Write(message)
+			//case <-ticker.C:
+			//	w.ws.SetWriteDeadline(time.Now().Add(writeWait))
+			//	if err := w.ws.WriteMessage(websocket.PingMessage, nil); err != nil {
+			//		return
+			//	}
 		}
 	}
 }
-func (w *wsClient) readrabbitmq() {
-	log.Println(messagequeue.RabbitChannel, "channel")
-	consumer, err := messagequeue.NewConsumer("approval")
-	if err != nil {
-		log.Println("Failed to create consumer:", err)
-		w.hub.broadcast <- Message{Type: "Warning", Content: w.data.id, Room: w.data.room}
-		return
-	}
-	defer consumer.Close()
 
-	log.Println("Connected to RabbitMQ, waiting for messages...")
-	w.hub.broadcast <- Message{Type: "Warning", Content: "watch id"}
-
-	go func() {
-		err := consumer.Consume(func(msg string) {
-			log.Println("Received message from RabbitMQ:", msg)
-			w.hub.broadcast <- Message{
-				Type:    "message",
-				Target:  "",
-				Room:    "",
-				Id:      "",
-				Content: msg,
-			}
-		})
-		if err != nil {
-			log.Println("Failed to consume messages:", err)
-			w.hub.broadcast <- Message{Type: "Warning", Content: err.Error()}
-		}
-	}()
-}
+//func (w *wsClient) NewConsumerHub() {
+//	queueName := w.data.id
+//	log.Println(queueName, "queuename")
+//	mq := messagequeue.NewRabbitMQ()
+//	queue, err := mq.DeclareQueue(queueName)
+//	if err != nil {
+//		log.Fatalf("Could not declare queue: %v", err)
+//	}
+//	var exchangeName string
+//	exchangeName = "direct_exchange"
+//	//switch w.data.msgType {
+//	//case "direct":
+//	//	exchangeName = "direct_exchange"
+//	//case "broadcast":
+//	//	exchangeName = "fanout_exchange"
+//	//case "topic":
+//	//	exchangeName = "topic_exchange"
+//	//default:
+//	//	break
+//	//}
+//	err = mq.BindQueue(queue.Name, "", exchangeName)
+//	if err != nil {
+//		log.Fatalln(err)
+//	}
+//	msgs, err := mq.Consume(queue.Name)
+//	if err != nil {
+//		log.Fatalf("Failed to register a consumer: %v", err)
+//	}
+//
+//	go func() {
+//		for msg := range msgs {
+//			log.Printf("Received a message: %s", msg.Body)
+//			w.hub.broadcast <- Message{Type: "notification", Content: string(msg.Body)}
+//			//c.send <- msg.Body
+//		}
+//	}()
+//}
